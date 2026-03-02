@@ -23,6 +23,15 @@ def parse_danish_decimal(value: str) -> float:
     return float(clean)
 
 
+def decode_csv_bytes(raw: bytes, filename: str) -> str:
+    for encoding in ("utf-8", "cp1252", "latin-1"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise RuntimeError(f"Filen {filename} kunne ikke dekodes som tekst")
+
+
 def normalize_category(raw_text: str, configured_categories: list[str]) -> str:
     value = raw_text.strip().lower()
     for category in configured_categories:
@@ -70,13 +79,13 @@ def read_csv_content(source: str, filename: str) -> str:
             raise RuntimeError("Dropbox remote er ikke konfigureret")
         path = f"{remote.rstrip('/')}/{filename}"
         try:
-            result = subprocess.run(["rclone", "cat", path], check=True, capture_output=True, text=True)
+            result = subprocess.run(["rclone", "cat", path], check=True, capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             raise RuntimeError(f"Kunne ikke læse filen {filename}: {exc}") from exc
-        return result.stdout
+        return decode_csv_bytes(result.stdout, filename)
 
     local_dir = BASE_DIR / os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
-    return (local_dir / filename).read_text(encoding="utf-8")
+    return decode_csv_bytes((local_dir / filename).read_bytes(), filename)
 
 
 def load_transactions() -> dict:
