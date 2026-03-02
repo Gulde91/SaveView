@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SaveView</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Opsparings-overblik</h1>
+        <p id="sourceLabel"></p>
+      </header>
+
+      <section id="warningBox" class="warning hidden"></section>
+
+      <section class="card">
+        <h2>Opsparing pr. kategori</h2>
+        <ul id="categoryList"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Total saldo over tid</h2>
+        <canvas id="saldoCanvas" width="600" height="260"></canvas>
+      </section>
+
+      <section class="card">
+        <h2>Udvikling pr. kategori</h2>
+        <canvas id="categoryCanvas" width="600" height="300"></canvas>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
