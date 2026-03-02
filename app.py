@@ -18,17 +18,6 @@ DATE_FORMAT = "%d.%m.%Y"
 BASE_DIR = Path(__file__).parent
 
 
-def decode_csv_bytes(raw: bytes, filename: str) -> str:
-    encodings = ("utf-8", "cp1252", "latin-1")
-    last_error: UnicodeDecodeError | None = None
-    for encoding in encodings:
-        try:
-            return raw.decode(encoding)
-        except UnicodeDecodeError as exc:
-            last_error = exc
-    raise RuntimeError(f"Kunne ikke afkode filen {filename} som tekst ({last_error})")
-
-
 def parse_danish_decimal(value: str) -> float:
     clean = value.strip().replace(".", "").replace(",", ".")
     return float(clean)
@@ -81,13 +70,13 @@ def read_csv_content(source: str, filename: str) -> str:
             raise RuntimeError("Dropbox remote er ikke konfigureret")
         path = f"{remote.rstrip('/')}/{filename}"
         try:
-            result = subprocess.run(["rclone", "cat", path], check=True, capture_output=True)
+            result = subprocess.run(["rclone", "cat", path], check=True, capture_output=True, text=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             raise RuntimeError(f"Kunne ikke læse filen {filename}: {exc}") from exc
-        return decode_csv_bytes(result.stdout, filename)
+        return result.stdout
 
     local_dir = BASE_DIR / os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
-    return decode_csv_bytes((local_dir / filename).read_bytes(), filename)
+    return (local_dir / filename).read_text(encoding="utf-8")
 
 
 def load_transactions() -> dict:
@@ -175,8 +164,6 @@ class SaveViewHandler(BaseHTTPRequestHandler):
                 self._send_json(load_transactions())
             except RuntimeError as exc:
                 self._send_json({"fejl": str(exc)}, status=500)
-            except Exception as exc:
-                self._send_json({"fejl": f"Uventet serverfejl: {exc}"}, status=500)
             return
         if route == "/static/styles.css":
             self._send_file(BASE_DIR / "static" / "styles.css", "text/css; charset=utf-8")
