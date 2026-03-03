@@ -184,7 +184,7 @@ class SaveViewHandler(BaseHTTPRequestHandler):
         if route == "/":
             self._send_file(BASE_DIR / "templates" / "index.html", "text/html; charset=utf-8")
             return
-        if route == "/api/dashboard":
+        if route in {"/api/dashboard", "/api/data"}:
             try:
                 self._send_json(load_transactions())
             except RuntimeError as exc:
