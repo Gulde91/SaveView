@@ -96,10 +96,8 @@ def read_csv_content(source: str, filename: str) -> str:
             raise RuntimeError(f"Kunne ikke læse filen {filename}: {exc}") from exc
         return decode_csv_bytes(result.stdout, filename)
 
-    local_path = resolve_local_data_dir()
-    if local_path.is_file():
-        return decode_csv_bytes(local_path.read_bytes(), local_path.name)
-    return decode_csv_bytes((local_path / filename).read_bytes(), filename)
+    local_dir = resolve_local_data_dir()
+    return decode_csv_bytes((local_dir / filename).read_bytes(), filename)
 
 
 def load_transactions() -> dict:
