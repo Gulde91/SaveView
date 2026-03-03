@@ -53,9 +53,16 @@ def get_categories() -> list[str]:
     return [entry.strip() for entry in configured.split(",") if entry.strip()]
 
 
+def resolve_local_data_dir() -> Path:
+    configured = os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
+    expanded = Path(os.path.expandvars(configured)).expanduser()
+    if expanded.is_absolute():
+        return expanded
+    return (BASE_DIR / expanded).resolve()
+
+
 def list_input_files() -> tuple[list[str], str]:
     dropbox_remote = os.getenv("SAVEVIEW_DROPBOX_REMOTE")
-    local_dir = os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
 
     if dropbox_remote:
         try:
@@ -65,7 +72,7 @@ def list_input_files() -> tuple[list[str], str]:
         files = [line.strip() for line in result.stdout.splitlines() if line.strip() and not line.endswith("/")]
         return files, "dropbox"
 
-    data_path = BASE_DIR / local_dir
+    data_path = resolve_local_data_dir()
     if not data_path.exists():
         raise RuntimeError(f"Datamappen findes ikke: {data_path}")
     files = sorted([entry.name for entry in data_path.iterdir() if entry.is_file()])
@@ -84,7 +91,7 @@ def read_csv_content(source: str, filename: str) -> str:
             raise RuntimeError(f"Kunne ikke læse filen {filename}: {exc}") from exc
         return decode_csv_bytes(result.stdout, filename)
 
-    local_dir = BASE_DIR / os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
+    local_dir = resolve_local_data_dir()
     return decode_csv_bytes((local_dir / filename).read_bytes(), filename)
 
 
