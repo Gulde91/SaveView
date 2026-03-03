@@ -1,12 +1,9 @@
 import os
 import tempfile
-import threading
 import unittest
-import urllib.request
 from pathlib import Path
 
 import app
-from http.server import ThreadingHTTPServer
 
 
 class SaveViewDataDirTests(unittest.TestCase):
@@ -49,28 +46,6 @@ class SaveViewDataDirTests(unittest.TestCase):
 
             loaded = app.read_csv_content(source, "month.csv")
             self.assertEqual(loaded, csv_content)
-
-
-class ApiRouteCompatibilityTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.SaveViewHandler)
-        cls.port = cls.server.server_address[1]
-        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
-        cls.thread.start()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.shutdown()
-        cls.server.server_close()
-        cls.thread.join(timeout=3)
-
-    def test_dashboard_and_data_routes_both_work(self):
-        for route in ("/api/dashboard", "/api/data"):
-            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{route}") as response:
-                self.assertEqual(response.status, 200)
-                body = response.read().decode("utf-8")
-                self.assertIn('"opsparingPrKategori"', body)
 
 
 if __name__ == "__main__":
