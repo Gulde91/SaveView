@@ -74,7 +74,12 @@ def list_input_files() -> tuple[list[str], str]:
 
     data_path = resolve_local_data_dir()
     if not data_path.exists():
-        raise RuntimeError(f"Datamappen findes ikke: {data_path}")
+        configured = os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
+        raise RuntimeError(
+            f"Datamappen findes ikke: {data_path} (SAVEVIEW_DATA_DIR={configured!r}, BASE_DIR={BASE_DIR})"
+        )
+    if data_path.is_file():
+        return [data_path.name], "local"
     files = sorted([entry.name for entry in data_path.iterdir() if entry.is_file()])
     return files, "local"
 
