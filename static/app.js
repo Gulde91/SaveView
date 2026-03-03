@@ -95,9 +95,27 @@ function drawMultiLineChart(canvasId, seriesMap) {
   });
 }
 
+async function fetchDashboardData() {
+  const endpoints = ['/api/dashboard', '/api/data'];
+  let lastError = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(`Kunne ikke hente dashboard-data (${lastError})`);
+}
+
 async function loadDashboard() {
-  const response = await fetch('/api/dashboard');
-  const data = await response.json();
+  const data = await fetchDashboardData();
 
   if (data.fejl) {
     document.body.innerHTML = `<p>Fejl: ${data.fejl}</p>`;
@@ -125,4 +143,6 @@ async function loadDashboard() {
   drawMultiLineChart('categoryCanvas', data.kategoriUdvikling);
 }
 
-loadDashboard();
+loadDashboard().catch((error) => {
+  document.body.innerHTML = `<p>Fejl: ${error.message}</p>`;
+});
