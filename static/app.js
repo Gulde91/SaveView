@@ -102,10 +102,19 @@ async function fetchDashboardData() {
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      let body = null;
+      try {
+        body = await response.json();
+      } catch (_error) {
+        body = null;
       }
-      return await response.json();
+
+      if (!response.ok) {
+        const serverError = body && body.fejl ? `: ${body.fejl}` : '';
+        throw new Error(`HTTP ${response.status}${serverError}`);
+      }
+
+      return body || {};
     } catch (error) {
       lastError = error;
     }
@@ -125,9 +134,17 @@ async function loadDashboard() {
   document.getElementById('sourceLabel').textContent = `Datakilde: ${data.datakilde}`;
 
   const warningBox = document.getElementById('warningBox');
+  const warnings = [];
   if (data.ugyldigeFiler.length) {
+    warnings.push(`Følgende filnavne matcher ikke mønsteret og bør kontrolleres:<br>${data.ugyldigeFiler.join('<br>')}`);
+  }
+  if (data.ulæseligeFiler && data.ulæseligeFiler.length) {
+    warnings.push(`Følgende filer kunne ikke læses og blev sprunget over:<br>${data.ulæseligeFiler.join('<br>')}`);
+  }
+
+  if (warnings.length) {
     warningBox.classList.remove('hidden');
-    warningBox.innerHTML = `<strong>Advarsel:</strong> Følgende filnavne matcher ikke mønsteret og bør kontrolleres:<br>${data.ugyldigeFiler.join('<br>')}`;
+    warningBox.innerHTML = `<strong>Advarsel:</strong><br>${warnings.join('<br><br>')}`;
   }
 
   const list = document.getElementById('categoryList');

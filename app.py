@@ -61,17 +61,7 @@ def resolve_local_data_dir() -> Path:
     return (BASE_DIR / expanded).resolve()
 
 
-def list_input_files() -> tuple[list[str], str]:
-    dropbox_remote = os.getenv("SAVEVIEW_DROPBOX_REMOTE")
-
-    if dropbox_remote:
-        try:
-            result = subprocess.run(["rclone", "lsf", dropbox_remote], check=True, capture_output=True, text=True)
-        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-            raise RuntimeError(f"Kunne ikke hente filer fra Dropbox via rclone: {exc}") from exc
-        files = [line.strip() for line in result.stdout.splitlines() if line.strip() and not line.endswith("/")]
-        return files, "dropbox"
-
+def list_local_files() -> list[str]:
     data_path = resolve_local_data_dir()
     if not data_path.exists():
         configured = os.getenv("SAVEVIEW_DATA_DIR", "sample_data")
@@ -79,9 +69,25 @@ def list_input_files() -> tuple[list[str], str]:
             f"Datamappen findes ikke: {data_path} (SAVEVIEW_DATA_DIR={configured!r}, BASE_DIR={BASE_DIR})"
         )
     if data_path.is_file():
-        return [data_path.name], "local"
-    files = sorted([entry.name for entry in data_path.iterdir() if entry.is_file()])
-    return files, "local"
+        return [data_path.name]
+    return sorted([entry.name for entry in data_path.iterdir() if entry.is_file()])
+
+
+def list_input_files() -> tuple[list[str], str]:
+    dropbox_remote = os.getenv("SAVEVIEW_DROPBOX_REMOTE")
+
+    if dropbox_remote:
+        try:
+            result = subprocess.run(["rclone", "lsf", dropbox_remote], check=True, capture_output=True, text=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            try:
+                return list_local_files(), "local"
+            except RuntimeError:
+                raise RuntimeError(f"Kunne ikke hente filer fra Dropbox via rclone: {exc}") from exc
+        files = [line.strip() for line in result.stdout.splitlines() if line.strip() and not line.endswith("/")]
+        return files, "dropbox"
+
+    return list_local_files(), "local"
 
 
 def read_csv_content(source: str, filename: str) -> str:
@@ -101,7 +107,30 @@ def read_csv_content(source: str, filename: str) -> str:
         target = local_path
     else:
         target = local_path / filename
-    return decode_csv_bytes(target.read_bytes(), filename)
+    try:
+        return decode_csv_bytes(target.read_bytes(), filename)
+    except OSError as exc:
+        raise RuntimeError(f"Kunne ikke læse filen {filename}: {exc}") from exc
+
+
+
+
+def load_transactions_from_file(filename: str, source: str, categories: list[str]) -> list[Transaction]:
+    content = read_csv_content(source, filename)
+    reader = csv.DictReader(io.StringIO(content), delimiter=";")
+    parsed: list[Transaction] = []
+    for row in reader:
+        if not row.get("Dato") or not row.get("Tekst"):
+            continue
+        try:
+            tx_date = datetime.strptime(row["Dato"], DATE_FORMAT)
+            amount = parse_danish_decimal(row["Beløb"])
+            balance = parse_danish_decimal(row["Saldo"])
+        except (ValueError, KeyError):
+            continue
+        mapped = normalize_category(row["Tekst"], categories)
+        parsed.append(Transaction(date=tx_date, text=mapped, amount=amount, balance=balance))
+    return parsed
 
 
 def load_transactions() -> dict:
@@ -110,23 +139,16 @@ def load_transactions() -> dict:
     invalid_filenames = []
     transactions: list[Transaction] = []
 
+    unreadable_files = []
+
     for filename in files:
         if not FILENAME_PATTERN.match(filename):
             invalid_filenames.append(filename)
 
-        content = read_csv_content(source, filename)
-        reader = csv.DictReader(io.StringIO(content), delimiter=";")
-        for row in reader:
-            if not row.get("Dato") or not row.get("Tekst"):
-                continue
-            try:
-                tx_date = datetime.strptime(row["Dato"], DATE_FORMAT)
-                amount = parse_danish_decimal(row["Beløb"])
-                balance = parse_danish_decimal(row["Saldo"])
-            except (ValueError, KeyError):
-                continue
-            mapped = normalize_category(row["Tekst"], categories)
-            transactions.append(Transaction(date=tx_date, text=mapped, amount=amount, balance=balance))
+        try:
+            transactions.extend(load_transactions_from_file(filename, source, categories))
+        except RuntimeError:
+            unreadable_files.append(filename)
 
     transactions.sort(key=lambda item: item.date)
 
@@ -155,6 +177,7 @@ def load_transactions() -> dict:
         "saldoUdvikling": balance_series,
         "kategoriUdvikling": category_series_map,
         "ugyldigeFiler": invalid_filenames,
+        "ulæseligeFiler": unreadable_files,
         "datakilde": source,
     }
 
