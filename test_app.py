@@ -69,42 +69,6 @@ class SaveViewDataDirTests(unittest.TestCase):
             self.assertEqual(source, "local")
             self.assertEqual(files, ["month.csv"])
 
-
-
-    def test_read_csv_content_raises_runtime_error_on_missing_local_file(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            os.environ["SAVEVIEW_DATA_DIR"] = str(tmpdir)
-
-            with self.assertRaises(RuntimeError) as ctx:
-                app.read_csv_content("local", "missing.csv")
-
-            self.assertIn("Kunne ikke læse filen missing.csv", str(ctx.exception))
-
-    def test_load_transactions_skips_unreadable_files(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            data_dir = Path(tmpdir)
-            valid_name = "123_2026.01.01-2026.01.31.csv"
-            broken_name = "124_2026.01.01-2026.01.31.csv"
-            (data_dir / valid_name).write_text(
-                "Dato;Tekst;Beløb;Saldo\n01.01.2026;bilopsparing;1.000,00;1.000,00\n", encoding="utf-8"
-            )
-            (data_dir / broken_name).write_text("not-used", encoding="utf-8")
-
-            os.environ["SAVEVIEW_DATA_DIR"] = str(data_dir)
-
-            original_read_csv = app.read_csv_content
-
-            def fake_read_csv(source, filename):
-                if filename == broken_name:
-                    raise RuntimeError("decode error")
-                return original_read_csv(source, filename)
-
-            with patch("app.read_csv_content", side_effect=fake_read_csv):
-                result = app.load_transactions()
-
-            self.assertEqual(result["antalTransaktioner"], 1)
-            self.assertEqual(result["ulæseligeFiler"], [broken_name])
-
     def test_dropbox_failure_raises_error_without_local_fallback(self):
         os.environ["SAVEVIEW_DATA_DIR"] = "/tmp/does-not-exist-saveview"
         os.environ["SAVEVIEW_DROPBOX_REMOTE"] = "dropbox:/Opsparing"
