@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
+    <div id="loadingOverlay" class="loading-overlay">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-title">Indlæser SaveView</p>
+      <p id="loadingMessage" class="loading-message">Starter…</p>
+    </div>
+
     <main class="container">
       <header>
         <h1>Opsparing</h1>
@@ -33,6 +39,11 @@
 
       <section class="card">
         <h2>Udvikling pr. kategori</h2>
+        <div class="range-controls" id="categoryRangeControls">
+          <button type="button" data-range-category="week">Seneste uge</button>
+          <button type="button" data-range-category="month">Seneste måned</button>
+          <button type="button" data-range-category="quarter">Seneste 3 måneder</button>
+        </div>
         <canvas id="categoryCanvas" width="600" height="300"></canvas>
       </section>
     </main>

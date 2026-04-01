@@ -3,7 +3,7 @@ function formatCurrency(amount) {
 }
 
 function formatAxisCurrency(amount) {
-  return amount.toLocaleString('da-DK', { maximumFractionDigits: 0 }) + ' kr.';
+  return amount.toLocaleString('da-DK', { maximumFractionDigits: 0 });
 }
 
 function formatAxisDate(dateStr) {
@@ -23,18 +23,19 @@ function getRangeStart(maxDateStr, rangeKey) {
   return start;
 }
 
-function computeScale(canvas, allValues) {
-  const padding = { top: 28, right: 14, bottom: 46, left: 62 };
+function computeScale(canvas, allValues, paddingOverrides = {}) {
+  const padding = { top: 28, right: 14, bottom: 46, left: 62, ...paddingOverrides };
   const min = Math.min(...allValues);
   const max = Math.max(...allValues);
-  const range = max - min || Math.max(Math.abs(max), 1);
-  const yMin = min - range * 0.08;
-  const yMax = max + range * 0.08;
+  const yTicks = computeNiceTicks(min, max);
+  const yMin = yTicks[0];
+  const yMax = yTicks[yTicks.length - 1];
 
   return {
     padding,
     yMin,
     yMax,
+    yTicks,
     toX(index, total) {
       const width = canvas.width - padding.left - padding.right;
       return padding.left + (index * width) / Math.max(total - 1, 1);
@@ -44,6 +45,32 @@ function computeScale(canvas, allValues) {
       return canvas.height - padding.bottom - ((value - yMin) * height) / Math.max(yMax - yMin, 1);
     }
   };
+}
+
+function computeNiceTicks(min, max, tickCount = 5) {
+  if (min === max) {
+    const base = Math.max(Math.abs(min), 1);
+    const step = Math.pow(10, Math.floor(Math.log10(base)));
+    const start = Math.floor((min - 2 * step) / step) * step;
+    return Array.from({ length: tickCount }, (_, i) => start + i * step);
+  }
+
+  const range = max - min;
+  const roughStep = range / Math.max(tickCount - 1, 1);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalized = roughStep / magnitude;
+  let niceNormalizedStep = 10;
+
+  if (normalized <= 1) niceNormalizedStep = 1;
+  else if (normalized <= 2) niceNormalizedStep = 2;
+  else if (normalized <= 5) niceNormalizedStep = 5;
+
+  const step = niceNormalizedStep * magnitude;
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = Math.ceil(max / step) * step;
+  const count = Math.round((niceMax - niceMin) / step) + 1;
+
+  return Array.from({ length: count }, (_, i) => niceMin + i * step);
 }
 
 function drawAxes(ctx, canvas, padding) {
@@ -63,21 +90,21 @@ function drawAxisLabels(ctx, canvas, padding, xLabel, yLabel) {
   ctx.textAlign = 'center';
   ctx.fillText(xLabel, (canvas.width + padding.left - padding.right) / 2, canvas.height - 10);
 
-  ctx.save();
-  ctx.translate(16, (canvas.height + padding.top - padding.bottom) / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = 'center';
-  ctx.fillText(yLabel, 0, 0);
-  ctx.restore();
+  if (yLabel) {
+    ctx.save();
+    ctx.translate(16, (canvas.height + padding.top - padding.bottom) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+  }
 }
 
 function drawTicks(ctx, canvas, scale, points) {
-  const yTickCount = 4;
   const xTickCount = Math.min(4, points.length - 1);
   ctx.font = '11px Arial';
 
-  for (let i = 0; i <= yTickCount; i += 1) {
-    const value = scale.yMin + ((scale.yMax - scale.yMin) * i) / yTickCount;
+  for (const value of scale.yTicks) {
     const y = scale.toY(value);
     ctx.strokeStyle = '#eef2f7';
     ctx.beginPath();
@@ -167,7 +194,13 @@ function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
 
   const allValues = categories.flatMap((category) => seriesMap[category].map((p) => p.værdi));
   const basePoints = seriesMap[categories[0]].map((p) => ({ date: p.dato }));
-  const scale = computeScale(canvas, allValues);
+  const legendItems = categories.map((category, idx) => ({
+    label: category,
+    color: colors[idx % colors.length]
+  }));
+  const legendRows = layoutLegendRows(ctx, legendItems, canvas.width, 13);
+  const legendTopPadding = 16 + legendRows.length * 18;
+  const scale = computeScale(canvas, allValues, { top: legendTopPadding });
   drawAxes(ctx, canvas, scale.padding);
   drawTicks(ctx, canvas, scale, basePoints);
   drawAxisLabels(ctx, canvas, scale.padding, xLabel, yLabel);
@@ -186,15 +219,50 @@ function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
     ctx.stroke();
   });
 
-  let legendY = 18;
+  drawLegendRows(ctx, legendRows, 18);
+}
+
+function layoutLegendRows(ctx, items, canvasWidth, minX) {
   ctx.font = '12px Arial';
-  categories.forEach((category, idx) => {
-    ctx.fillStyle = colors[idx % colors.length];
-    ctx.fillRect(16, legendY - 8, 10, 10);
-    ctx.fillStyle = '#111827';
-    ctx.textAlign = 'left';
-    ctx.fillText(category, 32, legendY);
-    legendY += 16;
+  const maxX = canvasWidth - 16;
+  const itemGap = 14;
+  const markerWidth = 10;
+  const markerTextGap = 6;
+
+  const rows = [];
+  let currentRow = [];
+  let cursorX = minX;
+
+  items.forEach((item) => {
+    const labelWidth = ctx.measureText(item.label).width;
+    const totalWidth = markerWidth + markerTextGap + labelWidth;
+    const nextCursor = cursorX + totalWidth;
+
+    if (currentRow.length && nextCursor > maxX) {
+      rows.push(currentRow);
+      currentRow = [];
+      cursorX = minX;
+    }
+
+    currentRow.push({ ...item, x: cursorX });
+    cursorX += totalWidth + itemGap;
+  });
+
+  if (currentRow.length) rows.push(currentRow);
+  return rows;
+}
+
+function drawLegendRows(ctx, rows, startY) {
+  ctx.font = '12px Arial';
+  rows.forEach((row, rowIndex) => {
+    const y = startY + rowIndex * 18;
+    row.forEach((item) => {
+      ctx.fillStyle = item.color;
+      ctx.fillRect(item.x, y - 8, 10, 10);
+      ctx.fillStyle = '#111827';
+      ctx.textAlign = 'left';
+      ctx.fillText(item.label, item.x + 16, y);
+    });
   });
 }
 
@@ -244,9 +312,30 @@ function activateRangeButton(activeValue) {
   });
 }
 
+function activateCategoryRangeButton(activeValue) {
+  document.querySelectorAll('[data-range-category]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.rangeCategory === activeValue);
+  });
+}
+
+function updateLoadingState(message, isDone = false) {
+  const loadingMessage = document.getElementById('loadingMessage');
+  const overlay = document.getElementById('loadingOverlay');
+  if (!loadingMessage || !overlay) return;
+
+  loadingMessage.textContent = message;
+  if (isDone) {
+    overlay.classList.add('hidden');
+    document.body.classList.remove('app-loading');
+  }
+}
+
 async function loadDashboard() {
+  document.body.classList.add('app-loading');
+  updateLoadingState('Loader data fra Dropbox…');
   const data = await fetchDashboardData();
 
+  updateLoadingState('Behandler data…');
   if (data.fejl) {
     document.body.innerHTML = `<p>Fejl: ${data.fejl}</p>`;
     return;
@@ -271,22 +360,38 @@ async function loadDashboard() {
 
   const fullBalanceSeries = data.saldoUdvikling.map((p) => ({ date: p.dato, value: p.saldo }));
   const fullCategorySeries = data.kategoriUdvikling;
+  let balanceRange = 'month';
+  let categoryRange = 'month';
 
-  const renderCharts = (rangeKey) => {
-    const filteredBalance = filterBalanceSeries(fullBalanceSeries, rangeKey);
-    const filteredCategories = filterCategorySeries(fullCategorySeries, rangeKey);
-    drawLineChart('saldoCanvas', filteredBalance, 'Saldo over tid', 'Dato', 'Kr.');
-    drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', 'Kr.');
-    activateRangeButton(rangeKey);
+  const renderCharts = () => {
+    updateLoadingState('Konstruerer plots…');
+    const filteredBalance = filterBalanceSeries(fullBalanceSeries, balanceRange);
+    const filteredCategories = filterCategorySeries(fullCategorySeries, categoryRange);
+    drawLineChart('saldoCanvas', filteredBalance, 'Saldo over tid', 'Dato', '');
+    drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', '');
+    activateRangeButton(balanceRange);
+    activateCategoryRangeButton(categoryRange);
+    updateLoadingState('Færdig', true);
   };
 
   document.querySelectorAll('[data-range]').forEach((button) => {
-    button.addEventListener('click', () => renderCharts(button.dataset.range));
+    button.addEventListener('click', () => {
+      balanceRange = button.dataset.range;
+      renderCharts();
+    });
   });
 
-  renderCharts('month');
+  document.querySelectorAll('[data-range-category]').forEach((button) => {
+    button.addEventListener('click', () => {
+      categoryRange = button.dataset.rangeCategory;
+      renderCharts();
+    });
+  });
+
+  renderCharts();
 }
 
 loadDashboard().catch((error) => {
+  updateLoadingState('Kunne ikke loade data', true);
   document.body.innerHTML = `<p>Fejl: ${error.message}</p>`;
 });
