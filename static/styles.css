@@ -49,6 +49,13 @@ h2 {
   margin: 0;
 }
 
+.total-balance {
+  margin-top: 0;
+  margin-bottom: 0.8rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
 #categoryList li {
   display: flex;
   justify-content: space-between;

@@ -49,7 +49,7 @@ class Transaction:
 
 
 def get_categories() -> list[str]:
-    configured = os.getenv("SAVEVIEW_CATEGORIES", "bilopsparing,Ferieopsparing")
+    configured = os.getenv("SAVEVIEW_CATEGORIES", "Bilopsparing,Ferieopsparing")
     return [entry.strip() for entry in configured.split(",") if entry.strip()]
 
 
@@ -141,6 +141,7 @@ def load_transactions() -> dict:
         totals_per_category[tx.text] += tx.amount
 
     balance_series = [{"dato": tx.date.strftime("%Y-%m-%d"), "saldo": round(tx.balance, 2)} for tx in transactions]
+    total_balance = round(balance_series[-1]["saldo"], 2) if balance_series else 0.0
 
     tracked_categories = sorted(set(categories + ["Øvrig opsparing"]))
     per_category_progress = defaultdict(float)
@@ -159,6 +160,7 @@ def load_transactions() -> dict:
             {"kategori": name, "beløb": round(totals_per_category.get(name, 0.0), 2)} for name in tracked_categories
         ],
         "saldoUdvikling": balance_series,
+        "totalSaldo": total_balance,
         "kategoriUdvikling": category_series_map,
         "ugyldigeFiler": invalid_filenames,
         "datakilde": source,
