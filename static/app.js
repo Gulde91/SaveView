@@ -315,6 +315,7 @@ function hideLoadingOverlay() {
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) {
     overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
   }
 }
 

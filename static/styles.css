@@ -134,6 +134,10 @@ canvas {
   z-index: 1000;
 }
 
+.loading-overlay.hidden {
+  display: none;
+}
+
 .spinner {
   width: 46px;
   height: 46px;
