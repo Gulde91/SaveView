@@ -27,7 +27,20 @@ function drawAxes(ctx, canvas, padding) {
   ctx.stroke();
 }
 
-function drawLineChart(canvasId, points, label, color = '#2563eb') {
+function drawAxisLabels(ctx, canvas, padding, xLabel, yLabel) {
+  ctx.fillStyle = '#6b7280';
+  ctx.textAlign = 'center';
+  ctx.fillText(xLabel, canvas.width / 2, canvas.height - 8);
+
+  ctx.save();
+  ctx.translate(12, canvas.height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText(yLabel, 0, 0);
+  ctx.restore();
+}
+
+function drawLineChart(canvasId, points, label, xLabel, yLabel, color = '#2563eb') {
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -39,6 +52,7 @@ function drawLineChart(canvasId, points, label, color = '#2563eb') {
 
   const scale = computeScale(canvas, points.map((p) => p.value));
   drawAxes(ctx, canvas, scale.padding);
+  drawAxisLabels(ctx, canvas, scale.padding, xLabel, yLabel);
 
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
@@ -55,7 +69,7 @@ function drawLineChart(canvasId, points, label, color = '#2563eb') {
   ctx.fillText(label, scale.padding, 18);
 }
 
-function drawMultiLineChart(canvasId, seriesMap) {
+function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
   const colors = ['#2563eb', '#16a34a', '#e11d48', '#d97706', '#7c3aed'];
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext('2d');
@@ -70,6 +84,7 @@ function drawMultiLineChart(canvasId, seriesMap) {
   const allValues = categories.flatMap((category) => seriesMap[category].map((p) => p.værdi));
   const scale = computeScale(canvas, allValues);
   drawAxes(ctx, canvas, scale.padding);
+  drawAxisLabels(ctx, canvas, scale.padding, xLabel, yLabel);
 
   categories.forEach((category, idx) => {
     const points = seriesMap[category];
@@ -132,6 +147,7 @@ async function loadDashboard() {
 
   const list = document.getElementById('categoryList');
   list.innerHTML = '';
+  document.getElementById('totalBalance').textContent = `Total saldo: ${formatCurrency(data.totalSaldo ?? 0)}`;
   data.opsparingPrKategori.forEach((entry) => {
     const li = document.createElement('li');
     li.innerHTML = `<span>${entry.kategori}</span><strong>${formatCurrency(entry.beløb)}</strong>`;
@@ -139,8 +155,8 @@ async function loadDashboard() {
   });
 
   const balanceSeries = data.saldoUdvikling.map((p) => ({ date: p.dato, value: p.saldo }));
-  drawLineChart('saldoCanvas', balanceSeries, 'Saldo over tid');
-  drawMultiLineChart('categoryCanvas', data.kategoriUdvikling);
+  drawLineChart('saldoCanvas', balanceSeries, 'Saldo over tid', 'Dato', 'Saldo (DKK)');
+  drawMultiLineChart('categoryCanvas', data.kategoriUdvikling, 'Dato', 'Opsparing (DKK)');
 }
 
 loadDashboard().catch((error) => {
