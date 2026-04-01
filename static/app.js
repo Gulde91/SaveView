@@ -107,8 +107,21 @@ function drawTicks(ctx, canvas, scale, points) {
   }
 }
 
+
+function syncCanvasSize(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+}
+
 function drawLineChart(canvasId, points, label, xLabel, yLabel, color = '#2563eb') {
   const canvas = document.getElementById(canvasId);
+  syncCanvasSize(canvas);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -142,6 +155,7 @@ function drawLineChart(canvasId, points, label, xLabel, yLabel, color = '#2563eb
 function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
   const colors = ['#2563eb', '#16a34a', '#e11d48', '#d97706', '#7c3aed'];
   const canvas = document.getElementById(canvasId);
+  syncCanvasSize(canvas);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
