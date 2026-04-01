@@ -225,10 +225,19 @@ function filterBalanceSeries(series, rangeKey) {
 }
 
 function filterCategorySeries(seriesMap, rangeKey) {
-  const allDates = Object.values(seriesMap).flatMap((series) => series.map((point) => point.dato));
-  if (!allDates.length) return {};
+  const allSeries = Object.values(seriesMap);
+  if (!allSeries.length) return {};
 
-  const maxDate = allDates.sort()[allDates.length - 1];
+  let maxDate = null;
+  allSeries.forEach((series) => {
+    if (!series.length) return;
+    const lastDate = series[series.length - 1].dato;
+    if (!maxDate || lastDate > maxDate) {
+      maxDate = lastDate;
+    }
+  });
+
+  if (!maxDate) return {};
   const start = getRangeStart(maxDate, rangeKey);
 
   return Object.fromEntries(
@@ -236,6 +245,26 @@ function filterCategorySeries(seriesMap, rangeKey) {
       category,
       series.filter((point) => parseISODate(point.dato) >= start)
     ])
+  );
+}
+
+function downsampleSeries(points, maxPoints = 500) {
+  if (!points.length || points.length <= maxPoints) {
+    return points;
+  }
+
+  const step = (points.length - 1) / (maxPoints - 1);
+  const sampled = [];
+  for (let i = 0; i < maxPoints; i += 1) {
+    const index = Math.round(i * step);
+    sampled.push(points[index]);
+  }
+  return sampled;
+}
+
+function downsampleCategorySeries(seriesMap, maxPoints = 500) {
+  return Object.fromEntries(
+    Object.entries(seriesMap).map(([category, series]) => [category, downsampleSeries(series, maxPoints)])
   );
 }
 
@@ -329,8 +358,8 @@ async function loadDashboard() {
   const fullCategorySeries = data.kategoriUdvikling;
 
   const renderCharts = (rangeKey) => {
-    const filteredBalance = filterBalanceSeries(fullBalanceSeries, rangeKey);
-    const filteredCategories = filterCategorySeries(fullCategorySeries, rangeKey);
+    const filteredBalance = downsampleSeries(filterBalanceSeries(fullBalanceSeries, rangeKey));
+    const filteredCategories = downsampleCategorySeries(filterCategorySeries(fullCategorySeries, rangeKey));
     drawLineChart('saldoCanvas', filteredBalance, 'Saldo over tid', 'Dato', '');
     const legendItems = drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', '');
     updateCategoryLegend(legendItems);
