@@ -3,7 +3,7 @@ function formatCurrency(amount) {
 }
 
 function formatAxisCurrency(amount) {
-  return amount.toLocaleString('da-DK', { maximumFractionDigits: 0 }) + ' kr.';
+  return amount.toLocaleString('da-DK', { maximumFractionDigits: 0 });
 }
 
 function formatAxisDate(dateStr) {
@@ -27,14 +27,15 @@ function computeScale(canvas, allValues) {
   const padding = { top: 28, right: 14, bottom: 46, left: 62 };
   const min = Math.min(...allValues);
   const max = Math.max(...allValues);
-  const range = max - min || Math.max(Math.abs(max), 1);
-  const yMin = min - range * 0.08;
-  const yMax = max + range * 0.08;
+  const yTicks = computeNiceTicks(min, max);
+  const yMin = yTicks[0];
+  const yMax = yTicks[yTicks.length - 1];
 
   return {
     padding,
     yMin,
     yMax,
+    yTicks,
     toX(index, total) {
       const width = canvas.width - padding.left - padding.right;
       return padding.left + (index * width) / Math.max(total - 1, 1);
@@ -44,6 +45,32 @@ function computeScale(canvas, allValues) {
       return canvas.height - padding.bottom - ((value - yMin) * height) / Math.max(yMax - yMin, 1);
     }
   };
+}
+
+function computeNiceTicks(min, max, tickCount = 5) {
+  if (min === max) {
+    const base = Math.max(Math.abs(min), 1);
+    const step = Math.pow(10, Math.floor(Math.log10(base)));
+    const start = Math.floor((min - 2 * step) / step) * step;
+    return Array.from({ length: tickCount }, (_, i) => start + i * step);
+  }
+
+  const range = max - min;
+  const roughStep = range / Math.max(tickCount - 1, 1);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalized = roughStep / magnitude;
+  let niceNormalizedStep = 10;
+
+  if (normalized <= 1) niceNormalizedStep = 1;
+  else if (normalized <= 2) niceNormalizedStep = 2;
+  else if (normalized <= 5) niceNormalizedStep = 5;
+
+  const step = niceNormalizedStep * magnitude;
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = Math.ceil(max / step) * step;
+  const count = Math.round((niceMax - niceMin) / step) + 1;
+
+  return Array.from({ length: count }, (_, i) => niceMin + i * step);
 }
 
 function drawAxes(ctx, canvas, padding) {
@@ -63,21 +90,21 @@ function drawAxisLabels(ctx, canvas, padding, xLabel, yLabel) {
   ctx.textAlign = 'center';
   ctx.fillText(xLabel, (canvas.width + padding.left - padding.right) / 2, canvas.height - 10);
 
-  ctx.save();
-  ctx.translate(16, (canvas.height + padding.top - padding.bottom) / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign = 'center';
-  ctx.fillText(yLabel, 0, 0);
-  ctx.restore();
+  if (yLabel) {
+    ctx.save();
+    ctx.translate(16, (canvas.height + padding.top - padding.bottom) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+  }
 }
 
 function drawTicks(ctx, canvas, scale, points) {
-  const yTickCount = 4;
   const xTickCount = Math.min(4, points.length - 1);
   ctx.font = '11px Arial';
 
-  for (let i = 0; i <= yTickCount; i += 1) {
-    const value = scale.yMin + ((scale.yMax - scale.yMin) * i) / yTickCount;
+  for (const value of scale.yTicks) {
     const y = scale.toY(value);
     ctx.strokeStyle = '#eef2f7';
     ctx.beginPath();
@@ -186,14 +213,15 @@ function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
     ctx.stroke();
   });
 
-  let legendY = 18;
+  let legendY = scale.padding.top + 2;
+  const legendX = canvas.width - scale.padding.right - 140;
   ctx.font = '12px Arial';
   categories.forEach((category, idx) => {
     ctx.fillStyle = colors[idx % colors.length];
-    ctx.fillRect(16, legendY - 8, 10, 10);
+    ctx.fillRect(legendX, legendY - 8, 10, 10);
     ctx.fillStyle = '#111827';
     ctx.textAlign = 'left';
-    ctx.fillText(category, 32, legendY);
+    ctx.fillText(category, legendX + 16, legendY);
     legendY += 16;
   });
 }
@@ -275,8 +303,8 @@ async function loadDashboard() {
   const renderCharts = (rangeKey) => {
     const filteredBalance = filterBalanceSeries(fullBalanceSeries, rangeKey);
     const filteredCategories = filterCategorySeries(fullCategorySeries, rangeKey);
-    drawLineChart('saldoCanvas', filteredBalance, 'Saldo over tid', 'Dato', 'Kr.');
-    drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', 'Kr.');
+    drawLineChart('saldoCanvas', filteredBalance, 'Saldo over tid', 'Dato', '');
+    drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', '');
     activateRangeButton(rangeKey);
   };
 
