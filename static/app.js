@@ -134,7 +134,6 @@ function drawTicks(ctx, canvas, scale, points) {
   }
 }
 
-
 function syncCanvasSize(canvas) {
   const rect = canvas.getBoundingClientRect();
   const width = Math.max(1, Math.round(rect.width));
@@ -189,7 +188,7 @@ function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
   const categories = Object.keys(seriesMap).filter((category) => seriesMap[category].length);
   if (!categories.length) {
     ctx.fillText('Ingen data', 20, 20);
-    return;
+    return [];
   }
 
   const allValues = categories.flatMap((category) => seriesMap[category].map((p) => p.værdi));
@@ -213,17 +212,10 @@ function drawMultiLineChart(canvasId, seriesMap, xLabel, yLabel) {
     ctx.stroke();
   });
 
-  let legendY = scale.padding.top + 2;
-  const legendX = canvas.width - scale.padding.right - 140;
-  ctx.font = '12px Arial';
-  categories.forEach((category, idx) => {
-    ctx.fillStyle = colors[idx % colors.length];
-    ctx.fillRect(legendX, legendY - 8, 10, 10);
-    ctx.fillStyle = '#111827';
-    ctx.textAlign = 'left';
-    ctx.fillText(category, legendX + 16, legendY);
-    legendY += 16;
-  });
+  return categories.map((category, idx) => ({
+    category,
+    color: colors[idx % colors.length]
+  }));
 }
 
 function filterBalanceSeries(series, rangeKey) {
@@ -272,13 +264,49 @@ function activateRangeButton(activeValue) {
   });
 }
 
+function updateCategoryLegend(items) {
+  const legend = document.getElementById('categoryLegend');
+  legend.innerHTML = '';
+  items.forEach((item) => {
+    const chip = document.createElement('span');
+    chip.className = 'legend-item';
+    chip.innerHTML = `<span class="legend-dot" style="background:${item.color}"></span>${item.category}`;
+    legend.appendChild(chip);
+  });
+}
+
+function setLoadingStep(text) {
+  const status = document.getElementById('loadingStatus');
+  if (status) {
+    status.textContent = text;
+  }
+}
+
+function hideLoadingOverlay() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
+}
+
+function nextPaint() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => setTimeout(resolve, 0));
+  });
+}
+
 async function loadDashboard() {
+  setLoadingStep('Loader data fra Dropbox/lokal mappe …');
+  await nextPaint();
   const data = await fetchDashboardData();
 
   if (data.fejl) {
     document.body.innerHTML = `<p>Fejl: ${data.fejl}</p>`;
     return;
   }
+
+  setLoadingStep('Behandler data …');
+  await nextPaint();
 
   document.getElementById('sourceLabel').textContent = `Datakilde: ${data.datakilde}`;
 
@@ -304,7 +332,8 @@ async function loadDashboard() {
     const filteredBalance = filterBalanceSeries(fullBalanceSeries, rangeKey);
     const filteredCategories = filterCategorySeries(fullCategorySeries, rangeKey);
     drawLineChart('saldoCanvas', filteredBalance, 'Saldo over tid', 'Dato', '');
-    drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', '');
+    const legendItems = drawMultiLineChart('categoryCanvas', filteredCategories, 'Dato', '');
+    updateCategoryLegend(legendItems);
     activateRangeButton(rangeKey);
   };
 
@@ -312,7 +341,10 @@ async function loadDashboard() {
     button.addEventListener('click', () => renderCharts(button.dataset.range));
   });
 
+  setLoadingStep('Konstruerer plots …');
+  await nextPaint();
   renderCharts('month');
+  hideLoadingOverlay();
 }
 
 loadDashboard().catch((error) => {
