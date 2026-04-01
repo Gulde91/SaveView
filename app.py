@@ -141,7 +141,7 @@ def load_transactions() -> dict:
         totals_per_category[tx.text] += tx.amount
 
     balance_series = [{"dato": tx.date.strftime("%Y-%m-%d"), "saldo": round(tx.balance, 2)} for tx in transactions]
-    total_balance = round(balance_series[-1]["saldo"], 2) if balance_series else 0.0
+    total_balance = round(sum(totals_per_category.values()), 2) if transactions else 0.0
 
     tracked_categories = sorted(set(categories + ["Øvrig opsparing"]))
     per_category_progress = defaultdict(float)

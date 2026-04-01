@@ -68,3 +68,35 @@ canvas {
   height: auto;
   display: block;
 }
+
+
+.range-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.range-controls button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.45rem 0.35rem;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.range-controls button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  font-weight: 700;
+}
+
+#saldoCanvas {
+  height: 320px;
+}
+
+#categoryCanvas {
+  height: 360px;
+}
