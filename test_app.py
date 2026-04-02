@@ -109,3 +109,7 @@ class SaveViewAggregationTests(unittest.TestCase):
 
             category_sum = round(sum(item["beløb"] for item in result["opsparingPrKategori"]), 2)
             self.assertEqual(result["totalSaldo"], category_sum)
+
+    def test_default_categories_include_outdoor(self):
+        os.environ.pop("SAVEVIEW_CATEGORIES", None)
+        self.assertEqual(app.get_categories(), ["Bilopsparing", "Ferieopsparing", "Outdoor"])
