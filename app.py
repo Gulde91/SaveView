@@ -49,7 +49,7 @@ class Transaction:
 
 
 def get_categories() -> list[str]:
-    configured = os.getenv("SAVEVIEW_CATEGORIES", "Bilopsparing,Ferieopsparing")
+    configured = os.getenv("SAVEVIEW_CATEGORIES", "Bilopsparing,Ferieopsparing,Outdoor")
     return [entry.strip() for entry in configured.split(",") if entry.strip()]
 
 

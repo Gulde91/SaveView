@@ -14,6 +14,7 @@ Mobilvenligt dashboard til overblik over opsparing fra CSV-filer.
 Standardkategorier:
 - `bilopsparing`
 - `Ferieopsparing`
+- `Outdoor`
 
 Kan tilpasses via miljøvariablen `SAVEVIEW_CATEGORIES` (kommasepareret).
 
@@ -39,7 +40,7 @@ Appen kører på port `8080` som standard (kan ændres med `PORT`).
 - `PORT` (default `8080`)
 - `SAVEVIEW_DATA_DIR` (default `sample_data`) — **lokal mappe eller lokal filsti**
 - `SAVEVIEW_DROPBOX_REMOTE` (valgfri, aktiverer Dropbox-læsning via rclone)
-- `SAVEVIEW_CATEGORIES` (default `bilopsparing,Ferieopsparing`)
+- `SAVEVIEW_CATEGORIES` (default `bilopsparing,Ferieopsparing,Outdoor`)
 
 > Vigtigt: `SAVEVIEW_DATA_DIR` er kun til lokale stier. Dropbox-stier (`dropbox:/...`) skal sættes i `SAVEVIEW_DROPBOX_REMOTE`.
 
@@ -71,7 +72,7 @@ WantedBy=multi-user.target
 PORT=8080
 SAVEVIEW_DROPBOX_REMOTE="dropbox:/TEAM_FOLDER/Opsparing"
 # SAVEVIEW_DATA_DIR=sample_data
-SAVEVIEW_CATEGORIES=bilopsparing,Ferieopsparing
+SAVEVIEW_CATEGORIES=bilopsparing,Ferieopsparing,Outdoor
 ```
 
 Efter ændringer i service-konfiguration:
