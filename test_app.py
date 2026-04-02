@@ -82,3 +82,30 @@ class SaveViewDataDirTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SaveViewAggregationTests(unittest.TestCase):
+    def setUp(self):
+        self._old_data_dir = os.environ.get("SAVEVIEW_DATA_DIR")
+
+    def tearDown(self):
+        if self._old_data_dir is None:
+            os.environ.pop("SAVEVIEW_DATA_DIR", None)
+        else:
+            os.environ["SAVEVIEW_DATA_DIR"] = self._old_data_dir
+
+    def test_total_balance_matches_sum_of_categories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir)
+            (data_dir / "month.csv").write_text(
+                "Dato;Tekst;Beløb;Saldo\n"
+                "01.01.2026;Bilopsparing;1.000,00;15.000,00\n"
+                "05.01.2026;Ferieopsparing;500,00;15.500,00\n",
+                encoding="utf-8",
+            )
+            os.environ["SAVEVIEW_DATA_DIR"] = str(data_dir)
+
+            result = app.load_transactions()
+
+            category_sum = round(sum(item["beløb"] for item in result["opsparingPrKategori"]), 2)
+            self.assertEqual(result["totalSaldo"], category_sum)
