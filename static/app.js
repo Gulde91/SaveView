@@ -338,7 +338,6 @@ async function loadDashboard() {
   setLoadingStep('Behandler data …');
   await nextPaint();
 
-  document.getElementById('sourceLabel').textContent = `Datakilde: ${data.datakilde}`;
 
   const warningBox = document.getElementById('warningBox');
   if (data.ugyldigeFiler.length) {
