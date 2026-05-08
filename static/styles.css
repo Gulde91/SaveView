@@ -26,6 +26,36 @@ h1 {
   margin-bottom: 0.2rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.latest-date {
+  margin: 0.2rem 0 0;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.reload-button {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reload-button:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
 h2 {
   margin-top: 0;
   font-size: 1.1rem;
