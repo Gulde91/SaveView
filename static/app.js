@@ -14,6 +14,11 @@ function parseISODate(dateStr) {
   return new Date(`${dateStr}T00:00:00`);
 }
 
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '-';
+  return parseISODate(dateStr).toLocaleDateString('da-DK');
+}
+
 function getRangeStart(maxDateStr, rangeKey) {
   const end = parseISODate(maxDateStr);
   const start = new Date(end);
@@ -348,6 +353,10 @@ async function loadDashboard() {
   const list = document.getElementById('categoryList');
   list.innerHTML = '';
   document.getElementById('totalBalance').textContent = `Total saldo: ${formatCurrency(data.totalSaldo ?? 0)}`;
+  const latestDateInfo = document.getElementById('latestDateInfo');
+  if (latestDateInfo) {
+    latestDateInfo.textContent = `Nyeste dato i indlæste CSV-filer: ${formatDisplayDate(data.senesteDato)}`;
+  }
   data.opsparingPrKategori.forEach((entry) => {
     const li = document.createElement('li');
     li.innerHTML = `<span>${entry.kategori}</span><strong>${formatCurrency(entry.beløb)}</strong>`;
@@ -374,6 +383,11 @@ async function loadDashboard() {
   await nextPaint();
   renderCharts('month');
   hideLoadingOverlay();
+}
+
+const reloadAppBtn = document.getElementById('reloadAppBtn');
+if (reloadAppBtn) {
+  reloadAppBtn.addEventListener('click', () => window.location.reload());
 }
 
 loadDashboard().catch((error) => {
