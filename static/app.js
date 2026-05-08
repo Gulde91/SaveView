@@ -355,7 +355,7 @@ async function loadDashboard() {
   document.getElementById('totalBalance').textContent = `Total saldo: ${formatCurrency(data.totalSaldo ?? 0)}`;
   const latestDateInfo = document.getElementById('latestDateInfo');
   if (latestDateInfo) {
-    latestDateInfo.textContent = `Nyeste dato i indlæste CSV-filer: ${formatDisplayDate(data.senesteDato)}`;
+    latestDateInfo.textContent = `Senest opdaterede: ${formatDisplayDate(data.senesteDato)}`;
   }
   data.opsparingPrKategori.forEach((entry) => {
     const li = document.createElement('li');
