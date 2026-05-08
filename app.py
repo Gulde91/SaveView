@@ -142,6 +142,7 @@ def load_transactions() -> dict:
 
     balance_series = [{"dato": tx.date.strftime("%Y-%m-%d"), "saldo": round(tx.balance, 2)} for tx in transactions]
     total_balance = round(sum(totals_per_category.values()), 2) if transactions else 0.0
+    latest_date = transactions[-1].date.strftime("%Y-%m-%d") if transactions else None
 
     tracked_categories = sorted(set(categories + ["Øvrig opsparing"]))
     per_category_progress = defaultdict(float)
@@ -162,6 +163,7 @@ def load_transactions() -> dict:
         "saldoUdvikling": balance_series,
         "totalSaldo": total_balance,
         "kategoriUdvikling": category_series_map,
+        "senesteDato": latest_date,
         "ugyldigeFiler": invalid_filenames,
         "datakilde": source,
     }
