@@ -45,7 +45,6 @@ class Transaction:
     date: datetime
     text: str
     amount: float
-    balance: float
 
 
 def get_categories() -> list[str]:
@@ -128,11 +127,10 @@ def load_transactions() -> dict:
             try:
                 tx_date = datetime.strptime(row["Dato"], DATE_FORMAT)
                 amount = parse_danish_decimal(row["Beløb"])
-                balance = parse_danish_decimal(row["Saldo"])
             except (ValueError, KeyError):
                 continue
             mapped = normalize_category(row["Tekst"], categories)
-            transactions.append(Transaction(date=tx_date, text=mapped, amount=amount, balance=balance))
+            transactions.append(Transaction(date=tx_date, text=mapped, amount=amount))
 
     transactions.sort(key=lambda item: item.date)
 
@@ -140,7 +138,8 @@ def load_transactions() -> dict:
     for tx in transactions:
         totals_per_category[tx.text] += tx.amount
 
-    balance_series = [{"dato": tx.date.strftime("%Y-%m-%d"), "saldo": round(tx.balance, 2)} for tx in transactions]
+    running_total = 0.0
+    balance_series = []
     total_balance = round(sum(totals_per_category.values()), 2) if transactions else 0.0
     latest_date = transactions[-1].date.strftime("%Y-%m-%d") if transactions else None
 
@@ -148,6 +147,8 @@ def load_transactions() -> dict:
     per_category_progress = defaultdict(float)
     category_series_map: dict[str, list[dict]] = defaultdict(list)
     for tx in transactions:
+        running_total += tx.amount
+        balance_series.append({"dato": tx.date.strftime("%Y-%m-%d"), "saldo": round(running_total, 2)})
         per_category_progress[tx.text] += tx.amount
         for category in tracked_categories:
             category_series_map[category].append(
